@@ -1,0 +1,10 @@
+.env
+.env.local
+*.db
+__pycache__/
+*.pyc
+venv/
+node_modules/
+.next/
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
