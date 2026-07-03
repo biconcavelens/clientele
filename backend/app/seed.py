@@ -3,8 +3,14 @@ Seed a handful of realistic fake clients with note history, including
 notes that share entities/topics across clients (same vendor, same
 conference, a referral) so the network-insights feature has something
 real to find. Run with: python -m app.seed
+
+Set SEED_SKIP_COGNEE=true to only recreate the local roster DB (client/note
+rows) without re-ingesting into Cognee - use this when Cognee already has
+the data (e.g. re-provisioning a fresh deploy's empty SQLite file) and you
+want to avoid a slow, duplicate re-ingestion.
 """
 import asyncio
+import os
 from datetime import datetime, timedelta
 
 from sqlmodel import Session
@@ -81,8 +87,10 @@ async def main():
             session.commit()
             session.refresh(client)
 
+            skip_cognee = os.getenv("SEED_SKIP_COGNEE", "false").lower() == "true"
             for kind, text in entry["notes"]:
-                await memory.remember_note(client.id, client.name, text, kind)
+                if not skip_cognee:
+                    await memory.remember_note(client.id, client.name, text, kind)
                 session.add(NoteMeta(client_id=client.id, kind=kind, preview=text[:140]))
             session.commit()
             print(f"Seeded {client.name} ({client.company}) with {len(entry['notes'])} notes")
