@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from . import memory
+from . import memory, seed
 from .db import Client, NoteMeta, engine, init_db
 
 app = FastAPI(title="Clientele API")
@@ -20,8 +20,16 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     init_db()
+    # Render's free tier resets the local SQLite file on redeploys/restarts.
+    # Auto-reseed the roster on an empty DB so the deployed demo is never
+    # blank. SEED_SKIP_COGNEE=true (set on the deployed instance, since
+    # Cognee's datasets already have the real data) avoids a slow re-ingest.
+    with Session(engine) as session:
+        has_clients = session.exec(select(Client)).first() is not None
+    if not has_clients:
+        await seed.main()
 
 
 # ---- schemas -------------------------------------------------------------
